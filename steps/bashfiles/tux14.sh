@@ -17,3 +17,10 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # disable ICMP echo-ignore-broadcast
 echo 0 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+
+read -n 1 -p "Set up the bridges and then click any key to continue."
+
+# add Rc as a router
+route add -net 172.16.1.0/24 gw 172.16.11.254
+
+route add default gw 172.16.11.254

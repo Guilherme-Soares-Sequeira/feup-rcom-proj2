@@ -1,0 +1,14 @@
+/system reset-configuration
+/interface bridge add name=10
+/interface bridge add name=11
+/interface bridge remove bridge
+/interface bridge port remove [find interface =etherXX]
+/interface bridge port remove [find interface =etherWW]
+/interface bridge port remove [find interface =etherYY]
+/interface bridge port remove [find interface =etherZZ]
+/interface bridge port remove [find interface =etherAA]
+/interface bridge port add bridge=bridgeY0 interface=etherXX
+/interface bridge port add bridge=bridgeY1 interface=etherWW
+/interface bridge port add bridge=bridgeY0 interface=etherYY
+/interface bridge port add bridge=bridgeY1 interface=etherZZ
+/interface bridge port add bridge=bridgeY1 interface=etherAA

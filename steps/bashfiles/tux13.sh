@@ -12,3 +12,5 @@ ifconfig eth0
 route add -net 172.16.11.0/24 gw 172.16.10.254
 
 read -n 1 -p "Set up the bridges and then click any key to continue."
+
+route add default gw 172.16.10.254

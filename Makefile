@@ -1,2 +1,2 @@
-download: clientTCP.c
-	gcc -o download clientTCP.c -lm
+download: download.c
+	gcc -o download download.c -lm
