@@ -1,3 +1,5 @@
+# this file is not updated.
+
 /system reset-configuration
 /interface bridge add name=bridge10
 /interface bridge add name=bridge11
