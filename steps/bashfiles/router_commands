@@ -1,3 +1,5 @@
+# This file is not updated.
+
 /system reset-configuration
 y
 /ip address add address=172.16.1.19/24 interface=ether1
