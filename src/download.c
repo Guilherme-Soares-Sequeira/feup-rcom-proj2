@@ -18,6 +18,8 @@
 
 #define SERVER_PORT 21
 
+#define DEBUG
+
 void ftp_info_destroy(ftp_info *to_destroy) {
   free(to_destroy->url);
   free(to_destroy->host_name);
@@ -108,7 +110,7 @@ void read_print_ans(const int sockfd) {
 
   char *first_line = read_line(sockfd);
   if (!is_multi_line(first_line)) {
-    printf("[SYS] Ans = %s\n", first_line);
+    printf("[LOG] Answer = %s\n", first_line);
     free(first_line);
     return;
   }
@@ -265,13 +267,17 @@ void initiate_sock(int *const sockfd, char *hostname, uint16_t port) {
     perror("[ERROR] Socket()");
     exit(-1);
   }
+  #ifdef DEBUG
   printf("[SYS] Opened TCP Socket.\n");
+  #endif
   /*connect to the server*/
   if (connect(*sockfd, (struct sockaddr *)&s_addr, sizeof(s_addr)) < 0) {
     perror("[ERROR] connect()");
     exit(-1);
   }
+  #ifdef DEBUG
   printf("[SYS] Connected.\n");
+  #endif
   read_print_ans(*sockfd);
 }
 
@@ -282,14 +288,18 @@ void initiate_sock_addrin(int *const sockfd,
     perror("[ERROR] Socket()");
     exit(-1);
   }
+  #ifdef DEBUG
   printf("[SYS] Opened TCP Socket.\n");
+  #endif
   /*connect to the server*/
   if (connect(*sockfd, (struct sockaddr *)s_addr, sizeof(struct sockaddr_in)) <
       0) {
     perror("[ERROR] Connect()");
     exit(-1);
   }
+  #ifdef DEBUG
   printf("[SYS] Connected.\n");
+  #endif
 }
 
 void close_sock(const int sockfd) {
@@ -304,7 +314,9 @@ void login(const int sockfd, login_credentials *const login_c) {
   do {
     char user_cmd[36] = "user ";
     char *send_user = strcat(strcat(user_cmd, login_c->username), "\n");
+    #ifdef DEBUG
     printf("[SYS] Logging in with username = %s\n", login_c->username);
+    #endif
     write(sockfd, send_user, strlen(send_user));
     array *ans = read_ans(sockfd);
     if (compare_strings(ans->buf[ans->used - 1], "331", 3) != 1) {
@@ -314,8 +326,6 @@ void login(const int sockfd, login_credentials *const login_c) {
       login_c->username = malloc(sizeof(char) * 32);
       printf("[SYS] Please enter a new username: ");
       scanf("%s", login_c->username);
-      printf("Finished printing the input string.\n");
-
       continue;
     } else {
       print_ans(ans);
@@ -324,7 +334,9 @@ void login(const int sockfd, login_credentials *const login_c) {
     char pass_cmd[36] = "pass ";
     char *send_pass = strcat(strcat(pass_cmd, login_c->password), "\n");
 
+    #ifdef DEBUG
     printf("[SYS] Logging in with password = %s\n", login_c->password);
+    #endif
     write(sockfd, send_pass, strlen(send_pass));
     ans = read_ans(sockfd);
     if (compare_strings(ans->buf[ans->used - 1], "230", 3) != 1) {
@@ -405,8 +417,10 @@ struct sockaddr_in *enter_psv(const int sockfd) {
   int port = atoi(byte1) * 256 + atoi(byte2);
 
   printf("[LOG] Answer = %s", ans);
+  #ifdef DEBUG
   printf("[SYS] IP = %s\n", IP);
   printf("[SYS] Port = %s,%s or %i\n", byte1, byte2, port);
+  #endif
 
   struct sockaddr_in *ret =
       (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
@@ -444,12 +458,14 @@ int main(int argc, char **argv) {
   }
 
   ftp_info info = parse_url(argv[1]);
+  #ifdef DEBUG
   printf("[SYS] url = %s\n[SYS] hostname = %s\n[SYS] username = %s\n[SYS] "
          "password = %s\n"
          "[SYS] filepath = "
          "%s\n[SYS] filename = %s\n",
          info.url, info.host_name, info.login_c.username, info.login_c.password,
          info.filepath, info.filename);
+  #endif
 
   int control_sockfd;
   initiate_sock(&control_sockfd, info.host_name, 21);
