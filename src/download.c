@@ -300,10 +300,9 @@ void close_sock(const int sockfd) {
 }
 
 void login(const int sockfd, login_credentials *const login_c) {
-  char user_cmd[36] = "user ";
-  char pass_cmd[36] = "pass ";
   int run = 0;
   do {
+    char user_cmd[36] = "user ";
     char *send_user = strcat(strcat(user_cmd, login_c->username), "\n");
     printf("[SYS] Logging in with username = %s\n", login_c->username);
     write(sockfd, send_user, strlen(send_user));
@@ -315,11 +314,14 @@ void login(const int sockfd, login_credentials *const login_c) {
       login_c->username = malloc(sizeof(char) * 32);
       printf("[SYS] Please enter a new username: ");
       scanf("%s", login_c->username);
+      printf("Finished printing the input string.\n");
+
       continue;
     } else {
       print_ans(ans);
       free(ans);
     }
+    char pass_cmd[36] = "pass ";
     char *send_pass = strcat(strcat(pass_cmd, login_c->password), "\n");
 
     printf("[SYS] Logging in with password = %s\n", login_c->password);
