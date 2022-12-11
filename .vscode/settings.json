@@ -1,0 +1,14 @@
+{
+  "files.associations": {
+    "*.php": "php",
+    "array": "c",
+    "*.tcc": "c",
+    "functional": "c",
+    "random": "c",
+    "new": "c",
+    "ostream": "c",
+    "streambuf": "c",
+    "type_traits": "c",
+    "utility": "c"
+  }
+}

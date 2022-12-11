@@ -18,25 +18,6 @@
 
 #define SERVER_PORT 21
 
-typedef struct array {
-  char **buf;
-  size_t len;
-  size_t used;
-} array;
-
-typedef struct login_credentials {
-  char *username;
-  char *password;
-} login_credentials;
-
-typedef struct ftp_info {
-  char *url;
-  char *host_name;
-  char *filepath;
-  char *filename;
-  login_credentials login_c;
-} ftp_info;
-
 void ftp_info_destroy(ftp_info *to_destroy) {
   free(to_destroy->url);
   free(to_destroy->host_name);
@@ -296,13 +277,12 @@ void initiate_sock(int *const sockfd, char *hostname, uint16_t port) {
 
 void initiate_sock_addrin(int *const sockfd,
                           const struct sockaddr_in *const s_addr) {
-
   /*open a TCP socket*/
   if (((*sockfd) = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("[ERROR] Socket()");
     exit(-1);
   }
-
+  printf("[SYS] Opened TCP Socket.\n");
   /*connect to the server*/
   if (connect(*sockfd, (struct sockaddr *)s_addr, sizeof(struct sockaddr_in)) <
       0) {
