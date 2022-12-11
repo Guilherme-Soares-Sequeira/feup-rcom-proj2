@@ -17,12 +17,12 @@
 
 /interface bridge remove bridge
 
-//etherXX -> tux2
-//etherWW -> tux3
-//etherYY -> tux4 eth0
-//etherZZ -> tux4 eth1
+//etherXX -> tux2 XX = 06
+//etherWW -> tux3 WW = 14
+//etherYY -> tux4 eth0 YY = 20 
+//etherZZ -> tux4 eth1 ZZ = 24
 
-//etherAA -> Rc eth1
+//etherAA -> Rc eth2 AA = 18
 
 //remove ports from default bridges
 
@@ -35,11 +35,11 @@
 
 //add ports to bridges
 
-/interface bridge port add bridge=bridgeY0 interface=etherXX
-/interface bridge port add bridge=bridgeY1 interface=etherWW
-/interface bridge port add bridge=bridgeY0 interface=etherYY
-/interface bridge port add bridge=bridgeY1 interface=etherZZ
+/interface bridge port add bridge=bridge10 interface=etherXX
+/interface bridge port add bridge=bridge11 interface=etherWW
+/interface bridge port add bridge=bridge10 interface=etherYY
+/interface bridge port add bridge=bridge11 interface=etherZZ
 
-/interface bridge port add bridge=bridgeY1 interface=etherAA
+/interface bridge port add bridge=bridge11 interface=etherAA
 
 ```

@@ -15,18 +15,33 @@
 
 #define SERVER_PORT 21
 
+typedef struct array {
+  char **buf;
+  size_t len;
+  size_t used;
+} array;
+
 typedef struct login_credentials {
-  char username[32];
-  char password[32];
+  char *username;
+  char *password;
 } login_credentials;
 
 typedef struct ftp_info {
-  char url[128];
-  char host_name[32];
-  char filepath[64];
-  char filename[32];
+  char *url;
+  char *host_name;
+  char *filepath;
+  char *filename;
   login_credentials login_c;
 } ftp_info;
+
+void ftp_info_destroy(ftp_info *to_destroy) {
+  free(to_destroy->url);
+  free(to_destroy->host_name);
+  free(to_destroy->filepath);
+  free(to_destroy->filename);
+  free(to_destroy->login_c.username);
+  free(to_destroy->login_c.password);
+}
 
 typedef struct dyn_string {
   char *string;
@@ -157,47 +172,88 @@ void read_print_ans(const int sockfd) {
   sleep(1);
 
   char *first_line = read_line(sockfd);
-
   if (!is_multi_line(first_line)) {
-    printf("[SYS] Ans:\n\n%s\n\n/ans\n", first_line);
+    printf("[SYS] Ans = %s\n", first_line);
     free(first_line);
     return;
   }
 
   char *line;
 
-  // create dynamic string and append first line
-  dyn_string *ans = dyn_string_new();
-  dyn_string_push_str(ans, first_line);
+  printf("[SYS] Answer start:\n");
+  printf("%s\n", first_line);
+  // read while we don't get the last line
+  while (!is_final_line(line = read_line(sockfd), first_line)) {
+    printf("%s", line);
+    free(line);
+  }
+  printf("%s", line);
+  free(line);
+  printf("[SYS] Answer end\n");
+  free(first_line);
+}
+
+array *read_ans(const int sockfd) {
+  sleep(1);
+  // initialize array struct with arbitrary initial values
+  array *lines = (array *)malloc(sizeof(array));
+  lines->buf = (char **)malloc(sizeof(char *) * 15);
+  lines->len = 15;
+  lines->used = 0;
+  char *first_line = read_line(sockfd);
+
+  lines->buf[lines->used++] = first_line;
+
+  if (!is_multi_line(first_line)) {
+    return lines;
+  }
+
+  char *line;
 
   // read while we don't get the last line
   while (!is_final_line(line = read_line(sockfd), first_line)) {
-    dyn_string_push_str(ans, line);
-    free(line);
+    if (lines->used == lines->len) {
+      lines->buf = (char **)realloc(lines->buf, lines->len * 2);
+      lines->len *= 2;
+    }
+    lines->buf[lines->used++] = line;
   }
-  dyn_string_push_str(ans, line);
-  free(line);
 
-  // print answer, free pointers and return
-  printf("[SYS] Ans:\n\n%s\n\n/ans\n\n", ans->string);
-  dyn_string_destroy(ans);
-  free(first_line);
+  // insert last line
+  if (lines->used == lines->len) {
+    lines->buf = (char **)realloc(lines->buf, lines->len * 2);
+    lines->len *= 2;
+  }
+  lines->buf[lines->used++] = line;
+
+  return lines;
+}
+
+void print_ans(const array *const ans) {
+  printf("[SYS] Answer start:\n");
+  for (int i = 0; i < ans->used; i++) {
+    printf("[LOG] %s", ans->buf[i]);
+  }
+  printf("[SYS] Answer end\n");
 }
 
 login_credentials get_login(const char *const url) {
   char *url_copy = strdup(url);
   login_credentials ret;
-  bzero(ret.username, sizeof(ret.username));
-  bzero(ret.password, sizeof(ret.password));
+  ret.username = malloc(sizeof(char) * 32);
+  ret.password = malloc(sizeof(char) * 32);
+  bzero(ret.username, sizeof(char) * 32);
+  bzero(ret.password, sizeof(char) * 32);
   if (strchr(url_copy, '@') == NULL) {
     strcpy(ret.username, "anonymous");
     strcpy(ret.password, "qualquer-pass");
     return ret;
   }
-
   char *username, *pass;
   if ((username = strstr(url_copy, "ftp://")) != NULL) {
     username += 6;
+  } else {
+    username = url_copy;
   }
 
   char delim[2] = ":";
@@ -212,6 +268,10 @@ login_credentials get_login(const char *const url) {
 
 ftp_info parse_url(char *const url) {
   ftp_info ret;
+  ret.url = malloc(sizeof(char) * 256);
+  ret.host_name = malloc(sizeof(char) * 64);
+  ret.filepath = malloc(sizeof(char) * 128);
+  ret.filename = malloc(sizeof(char) * 32);
   ret.login_c = get_login(url);
   strcpy(ret.url, url);
 
@@ -304,17 +364,47 @@ void close_sock(const int sockfd) {
   }
 }
 
-void login(const int sockfd, const char *const username,
-           const char *const password) {
+void login(const int sockfd, login_credentials *const login_c) {
   char user_cmd[36] = "user ";
-  char *send_user = strcat(strcat(user_cmd, username), "\n");
-  printf("[SYS] Send_user = %s...\n", send_user);
-  write(sockfd, send_user, strlen(send_user));
-  read_print_ans(sockfd);
   char pass_cmd[36] = "pass ";
-  char *send_pass = strcat(strcat(pass_cmd, password), "\n");
-  write(sockfd, send_pass, strlen(send_pass));
-  read_print_ans(sockfd);
+  int run = 0;
+  do {
+    char *send_user = strcat(strcat(user_cmd, login_c->username), "\n");
+    printf("[SYS] Logging in with username = %s\n", login_c->username);
+    write(sockfd, send_user, strlen(send_user));
+    array *ans = read_ans(sockfd);
+    if (compare_strings(ans->buf[ans->used - 1], "331", 3) != 1) {
+      printf("[ERROR] Username not accepted\n");
+      print_ans(ans);
+      free(login_c->username);
+      login_c->username = malloc(sizeof(char) * 32);
+      printf("[SYS] Please enter a new username: ");
+      scanf("%s", login_c->username);
+      continue;
+    } else {
+      print_ans(ans);
+      free(ans);
+    }
+    char *send_pass = strcat(strcat(pass_cmd, login_c->password), "\n");
+
+    printf("[SYS] Logging in with password = %s\n", login_c->password);
+    write(sockfd, send_pass, strlen(send_pass));
+    ans = read_ans(sockfd);
+    if (compare_strings(ans->buf[ans->used - 1], "230", 3) != 1) {
+      printf("[ERROR] password not accepted\n");
+      print_ans(ans);
+      free(login_c->password);
+      login_c->username = malloc(sizeof(char) * 32);
+      printf("[SYS] Please enter a new password: ");
+      scanf("%s", login_c->username);
+      print_ans(ans);
+      free(ans);
+    } else {
+      run = 1;
+      print_ans(ans);
+      free(ans);
+    }
+  } while (run != 1);
 }
 
 struct sockaddr_in *enter_psv(const int sockfd) {
@@ -322,6 +412,12 @@ struct sockaddr_in *enter_psv(const int sockfd) {
   write(sockfd, pasv, strlen(pasv));
   sleep(1);
   char *ans = read_line(sockfd);
+
+  if (compare_strings(ans, "227", 3) != 1) {
+    printf("[ERROR] Couldn't enter passive mode.\n[LOG] Answer = %s", ans);
+    free(ans);
+    exit(-1);
+  }
 
   char IP[16] = {0};
   size_t ans_index = 27, IP_index = 0, comma_counter = 0;
@@ -371,11 +467,10 @@ struct sockaddr_in *enter_psv(const int sockfd) {
   }
   int port = atoi(byte1) * 256 + atoi(byte2);
 
-  printf("[SYS] Ans = %s\n", ans);
+  printf("[LOG] Answer = %s", ans);
   printf("[SYS] IP = %s\n", IP);
   printf("[SYS] Port = %s,%s or %i\n", byte1, byte2, port);
 
-  printf("[SYS] Size of sockaddr_in = %lu\n", sizeof(struct sockaddr_in));
   struct sockaddr_in *ret =
       (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
   bzero((char *)ret, sizeof(struct sockaddr_in));
@@ -412,16 +507,17 @@ int main(int argc, char **argv) {
   }
 
   ftp_info info = parse_url(argv[1]);
-  printf("[SYS] url = %s\nhostname = %s\n username = %s\n password = %s\n "
-         "filepath = "
-         "%s\n filename = %s\n",
+  printf("[SYS] url = %s\n[SYS] hostname = %s\n[SYS] username = %s\n[SYS] "
+         "password = %s\n"
+         "[SYS] filepath = "
+         "%s\n[SYS] filename = %s\n",
          info.url, info.host_name, info.login_c.username, info.login_c.password,
          info.filepath, info.filename);
 
   int control_sockfd;
   initiate_sock(&control_sockfd, info.host_name, 21);
 
-  login(control_sockfd, info.login_c.username, info.login_c.password);
+  login(control_sockfd, &(info.login_c));
   struct sockaddr_in *data_socket = enter_psv(control_sockfd);
   int data_sockfd;
   initiate_sock_addrin(&data_sockfd, data_socket);
@@ -431,5 +527,6 @@ int main(int argc, char **argv) {
 
   close_sock(control_sockfd);
   close_sock(data_sockfd);
+  ftp_info_destroy(&info);
   return 0;
 }
